@@ -1,0 +1,8 @@
+Device is broken
+
+This peer is broken : 192.168.0.2
+VNI to fix : 
+1337
+192.168.0.2 Fixed
+
+Done.
