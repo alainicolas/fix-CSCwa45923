@@ -1,4 +1,4 @@
-# CSCwa45923
+# Fix CSCwa45923
 
 Python script to check if a Nexus device is impacted with CSCwa45923 and to
 fix it if needed. 
@@ -37,6 +37,8 @@ Will save data for broken devices.
   
   
 ## Requirements 
+NXOS 9.3(6) to 9.3(7) via ND-ISSU
+
 Pyats 
 
 Python 3+
