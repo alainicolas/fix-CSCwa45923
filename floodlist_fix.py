@@ -32,8 +32,11 @@ template_loader = jinja2.FileSystemLoader(searchpath="./templates")
 template_env = jinja2.Environment(loader=template_loader)
 
 # Which file is my template
-template = template_env.get_template("testbed.tpl")
+template = template_env.get_template("testbed_2.tpl")
 testbed = load(template.render(list_ip_id = zip(list_ip, range(len(list_ip)))))
+
+#Initializing the dummy peer list
+
 
 # For each device in our testbed, except our Linux rebound server :
 for device in testbed:
@@ -45,7 +48,7 @@ for device in testbed:
                            log_stdout=False)
 
             print(f'-- {device.hostname} --')
-
+            dummy = "1616"
             #If we want to log ->
             if args.log:
                 with open(f'./outputs/{device.hostname}.txt', 'w') as file:
@@ -71,7 +74,7 @@ for device in testbed:
                             #For each broken peer, check all VNI where the peer is wrongly programmed
                             #And add it to vniList
 
-                            vniList = floodlist.brokenPeerVni(device, peer, dbvlan, dbvni)
+                            vniList = floodlist.brokenPeerVni(device, peer, dbvlan, dbvni, dummy)
                             if not args.silent:
                                 print("This peer is broken : " + peer)
                             file.write("This peer is broken : " + peer)
@@ -82,14 +85,14 @@ for device in testbed:
                             file.write('\n')
                             for vni in vniList:
                                 if not args.silent:
-                                    print(str(vni))
+                                    print(str(vni[0]))
                                 file.write(str(vni))
                                 file.write('\n')
 
                             #If --fix, we will fix these VNIs for this specific peer.
                             if args.fix:
                                 #This will add then remove the peer on the wrongly programmed VNI.
-                                floodlist.fixBrokenPeer(device, peer, vniList)
+                                floodlist.fixBrokenPeer(device, peer, vniList,dbvlan)
                                 if not args.silent:
                                     print(str(peer) + " Fixed")
                                     print("")
@@ -117,21 +120,23 @@ for device in testbed:
                         dbvni = floodlist.dbVni(device)
                         dbvlan = floodlist.dbVlan(device)
 
+
                         for peer in brokenpeers:
                            # For each broken peer, check all VNI where the peer is wrongly programmed
                            # And add it to vniList
 
-                           vniList = floodlist.brokenPeerVni(device, peer, dbvlan, dbvni)
+                           vniList = floodlist.brokenPeerVni(device, peer, dbvlan, dbvni, dummy)
                            if not args.silent:
                                 print("This peer is broken : " +peer)
                                 print("VNI to fix : ")
                                 for vni in vniList:
-                                    print(str(vni))
+                                    print(str(vni[0]))
+
 
                            # If --fix, we will fix these VNIs for this specific peer.
                            if args.fix :
                                # This will add then remove the peer on the wrongly programmed VNI.
-                               floodlist.fixBrokenPeer(device, peer, vniList)
+                               floodlist.fixBrokenPeer(device, peer, vniList, dbvlan)
                                if not args.silent:
                                     print(str(peer) + " Fixed")
                                     print("")

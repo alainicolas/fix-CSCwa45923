@@ -15,7 +15,6 @@ def dbVni(device):
     dbvni = {}
     for vni in nve['nve1']['vni']:
         dbvni.setdefault(vni, [])
-        # print("this is my vni", + vni)
         for ip in nve['nve1']['vni'][vni]['repl_ip']:
             dbvni[vni].append(ip)
     return dbvni
@@ -61,9 +60,11 @@ def checkBrokenPeer(device):
     return brokenpeers
 
 
-def brokenPeerVni(device,peer,dbvlan,dbvni):
+def brokenPeerVni(device,peer,dbvlan,dbvni,dummy):
     #For a peer on a device, return a list of broken vni
     #This list will be used as parameter for the fixing function
+
+    vniList = []
 
     # 1 List all the vlan from the running config
     configuredVlanList = vniListToVlan(vniPerPeer(dbvni, peer), dbvlan)
@@ -74,8 +75,26 @@ def brokenPeerVni(device,peer,dbvlan,dbvni):
     # 3 We want to find programmed vlan that are not in the running config.
     listdiff = diffList(brokenVlanList, configuredVlanList)
 
-    # 4 Transform this list of VLANs in a list of VNIs
-    vniList = vlanListToVni(listdiff, dbvlan)
+    # 4 Check if the vlan exist :
+    #List of existing vlans :
+    vlans = [a_tuple[0] for a_tuple in dbvlan]
+
+    #For each vlan of the list
+    for diff in listdiff:
+        #if it exists, give the vni
+        if str(diff) in vlans:
+
+            vniList.append(vlanListToVni([str(diff)], dbvlan))
+
+        #Else, append a dummy vni to vniList.
+        else:
+            # 1616 + missing VLAN is a dummy VNI unused by OVH.
+            dummy_str = dummy + str(diff)
+
+            dbvlan.append((str(diff), dummy_str))
+
+            vniList.append(vlanListToVni([str(diff)], dbvlan))
+
 
     return vniList
 
@@ -118,22 +137,115 @@ def vniListToVlan(vniList,dbvlan):
 def vlanListToVni(vlanList,dbvlan):
     #Return a list of VNI from a VLAN list
     vniList = []
+
     for vlan in vlanList:
         vniList.append(int(vniForVlan(dbvlan, str(vlan))))
     return vniList
 
-def fixBrokenPeer(device,peer,vniList):
+def fixBrokenPeer(device,peer,vniList,dbvlan):
     #This function will add/remove the given peer for each VNI from the VNI List
     #It should fix the floodlist.
+
+    #18 Janvier :
+    #Verifier si le vlan existe. Si il n'existe pas le créer
+    #Vérifier si ca marche pour plusieurs VNI dans "vniList"
+
     for vni in vniList:
-        device.configure('''
-            interface nve1
-             member vni ''' + str(vni) + '''
-            ingress-replication protocol static
-            peer-ip ''' + str(peer))
-        device.configure('''
-            interface nve1
-             member vni ''' + str(vni) + '''
-            ingress-replication protocol static
-            no peer-ip ''' + str(peer))
+        #Check which vlan is going to be updated
+        #If its a dummy VNI, we need to create the dummy vlan
+        myvni = str(vni[0])
+        mypeer = str(peer)
+        #If Dummy VLAN :
+
+
+
+
+        ### Delete when ready :
+        if str(vni[0])[0:-4] == "1616":
+            myvlan = str(vni[0])[-4:]
+
+            # Create Vlan
+            print('''
+                        vlan ''' + myvlan + '''
+                         vn-segment ''' + myvni
+                             )
+
+            # Config Dummy VNI
+            print('''
+                        interface nve1
+                         member vni ''' + myvni + '''
+                        ingress-replication protocol static
+                        peer-ip ''' + mypeer)
+            # Delete the Dummy VNI
+            print('''
+                        interface nve1
+                         no member vni ''' + myvni)
+
+            # Delete VNI from VLAN
+            print('''
+                                    vlan ''' + myvlan + '''
+                                     no vn-segment ''' + myvni
+                  )
+
+            # Else, classic configuration of the VNI
+            # Do not delete the VNI
+        else:
+
+            print('''
+                        interface nve1
+                         member vni ''' + myvni + '''
+                        ingress-replication protocol static
+                        peer-ip ''' + mypeer)
+            print('''
+                        interface nve1
+                         member vni ''' + myvni + '''
+                        ingress-replication protocol static
+                        no peer-ip ''' + mypeer)
+
+        ### End of delete when ready
+
+
+        #Uncomment when ready :
+        """
+        if str(vni[0])[0:-4] == "1616":
+            myvlan = str(vni[0])[-4:]
+
+            #Create Vlan
+            device.configure('''
+                vlan ''' + myvlan + '''
+                 vn-segment ''' + myvni
+                )
+
+           #Config Dummy VNI
+            device.configure('''
+                interface nve1
+                 member vni ''' + myvni + '''
+                ingress-replication protocol static
+                peer-ip ''' + mypeer)
+            #Delete the Dummy VNI
+            device.configure('''
+                interface nve1
+                 no member vni ''' + myvni)
+
+            #Delete VNI from VLAN
+            device.configure('''
+                vlan ''' + myvlan + '''
+                 no vn-segment ''' + myvni
+                )
+
+        #Else, classic configuration of the VNI
+        #Do not delete the VNI
+        else:
+
+            device.configure('''
+                interface nve1
+                 member vni ''' + myvni + '''
+                ingress-replication protocol static
+                peer-ip ''' + mypeer)
+            device.configure('''
+                interface nve1
+                 member vni ''' + myvni + '''
+                ingress-replication protocol static
+                no peer-ip ''' + mypeer)
+        """
     return True
