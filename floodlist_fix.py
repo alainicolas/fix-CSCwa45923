@@ -32,7 +32,7 @@ template_loader = jinja2.FileSystemLoader(searchpath="./templates")
 template_env = jinja2.Environment(loader=template_loader)
 
 # Which file is my template
-template = template_env.get_template("testbed_2.tpl")
+template = template_env.get_template("testbed.tpl")
 testbed = load(template.render(list_ip_id = zip(list_ip, range(len(list_ip)))))
 
 #Initializing the dummy peer list
